@@ -51,14 +51,12 @@ public class MainPanel extends JFrame {
             }
         });
 
-        // 사용자명 라벨과 입력 필드를 왼쪽에 배치
         gbc.gridx = 0; gbc.gridy = 0;
         centerPanel.add(new JLabel("사용자명: "), gbc);
 
         gbc.gridx = 1; gbc.gridy = 0;
         centerPanel.add(userField, gbc);
 
-        // 로그인 버튼을 오른쪽에 배치
         gbc.gridx = 1; gbc.gridy = 1;
         centerPanel.add(loginButton, gbc);
 
@@ -78,7 +76,7 @@ public class MainPanel extends JFrame {
                 "조인 조회 예제 1",
                 "조인 조회 예제 2",
                 "서브쿼리 조회 예제",
-                "글쓰기",
+                "글쓰기", // 글쓰기 버튼 추가
                 "조회", // 조회 버튼 추가
                 "삭제"  // 삭제 버튼 추가
             };
@@ -142,133 +140,195 @@ public class MainPanel extends JFrame {
     public void setViewPanel(JPanel viewPanel) {
         this.viewPanel = viewPanel;
     }
-}
 
-// 커스텀 버튼 클래스
-class customButton extends JLabel {
-    private String name;
-    private MainPanel parent;
-	private Object viewPanel;
+    // 글쓰기 패널 생성
+    public void createWritePanel() {
+        getViewPanel().removeAll(); // 기존의 뷰를 초기화
 
-    public customButton(String name, MainPanel parent) {
-        this.name = name;
-        this.parent = parent;
+        JLabel titleLabel = new JLabel("글쓰기", SwingConstants.CENTER);
+        getViewPanel().add(titleLabel, BorderLayout.NORTH);
 
-        // 버튼 스타일 설정
-        setText(name);
-        setHorizontalAlignment(SwingConstants.CENTER);
-        setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
-        setOpaque(true);
-        setBackground(Color.LIGHT_GRAY);
-        setPreferredSize(new Dimension(150, 40));
+        // 글쓰기 입력 필드
+        JTextArea textArea = new JTextArea(10, 30);
+        textArea.setLineWrap(true);
+        JScrollPane scrollPane = new JScrollPane(textArea);
 
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                setBackground(Color.DARK_GRAY);
-                setForeground(Color.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                setBackground(Color.LIGHT_GRAY);
-                setForeground(Color.BLACK);
-            }
-
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                handleClick();
+        JButton submitButton = new JButton("제출");
+        submitButton.addActionListener(e -> {
+            String content = textArea.getText();
+            if (!content.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "글이 제출되었습니다.");
+                // 제출 후 텍스트 에리어 초기화
+                textArea.setText("");
+            } else {
+                JOptionPane.showMessageDialog(this, "내용을 입력하세요.");
             }
         });
+
+        JPanel panel = new JPanel();
+        panel.add(submitButton);
+        getViewPanel().add(scrollPane, BorderLayout.CENTER);
+        getViewPanel().add(panel, BorderLayout.SOUTH);
+
+        getViewPanel().revalidate();
+        getViewPanel().repaint();
     }
 
-    // 클릭 이벤트 처리
-    private void handleClick() {
-        if (name.equals("조회")) {
-            // 조회 버튼 클릭 시
-            Sql sqlManager = new Sql();
-            String sqlQuery = sqlManager.sql().get("조회"); // 조회에 해당하는 SQL 쿼리 가져오기
-            DAO dao = new DAO();
-            Map<String, ArrayList<String>> result = dao.OracleInputSql(sqlQuery); // DAO 실행 결과
+    // 키 값에 대한 라벨을 화면에 표시하는 메서드
+    public void displayLabelsForKeys(List<String> columnNames, Map<String, ArrayList<String>> result) {
+        JPanel labelPanel = new JPanel(new GridLayout(0, 1));  // 세로로 라벨 배치
+        for (String key : columnNames) {
+            JLabel keyLabel = new JLabel(key, SwingConstants.CENTER);
+            keyLabel.setOpaque(true);
+            keyLabel.setBackground(Color.LIGHT_GRAY);
+            keyLabel.setPreferredSize(new Dimension(150, 40));
+            keyLabel.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
 
-            if (result != null && !result.isEmpty()) {
-                // 컬럼 이름과 데이터 생성
-                List<String> columnNames = new ArrayList<>(result.keySet());
-                List<List<String>> data = new ArrayList<>();
-
-                // 데이터 변환 (행 단위로 정리)
-                int numRows = result.values().iterator().next().size(); // 첫 열의 크기 사용
-                for (int i = 0; i < numRows; i++) {
-                    List<String> row = new ArrayList<>();
-                    for (String key : columnNames) {
-                        row.add(result.get(key).get(i));
-                    }
-                    data.add(row);
+            keyLabel.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    // 라벨 클릭 시 해당 키 값에 대한 데이터 조회
+                    List<String> data = result.get(key);
+                    JOptionPane.showMessageDialog(MainPanel.this,
+                            "키: " + key + "\n값들: " + data, "조회 결과", JOptionPane.INFORMATION_MESSAGE);
                 }
+            });
 
-                // 조회 결과를 라벨로 표시
-                JPanel labelPanel = new JPanel();
-                labelPanel.setLayout(new GridLayout(result.size(), 1));
-                for (String key : columnNames) {
-                    JLabel label = new JLabel(key);
-                    label.setForeground(Color.BLUE);
-                    label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                    label.addMouseListener(new MouseAdapter() {
-                        @Override
-                        public void mouseClicked(MouseEvent e) {
-                            // 라벨 클릭 시 해당 키에 대한 데이터 조회
-                            List<String> values = result.get(key);
-                            JOptionPane.showMessageDialog(parent, "값: " + String.join(", ", values), key + " 값 조회", JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    });
-                    labelPanel.add(label);
-                }
-                getViewPanel().add(labelPanel, BorderLayout.CENTER);
-                getViewPanel().revalidate();
-                getViewPanel().repaint();
-            } else {
-                JOptionPane.showMessageDialog(parent, "조회 결과가 없습니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
-            }
-        } else if (name.equals("삭제")) {
-            // 삭제 버튼 클릭 시 확인 대화상자 띄우기
-            int confirmation = JOptionPane.showConfirmDialog(parent, "삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
-            if (confirmation == JOptionPane.YES_OPTION) {
-                // 삭제 처리 로직 추가
-                JOptionPane.showMessageDialog(parent, "삭제가 완료되었습니다.");
-            }
-        } else {
-            // 다른 버튼 클릭 시 기존 기능 실행
-            Sql sqlManager = new Sql();
-            String sqlQuery = sqlManager.sql().get(name); // SQL 조회
-            DAO dao = new DAO();
-            Map<String, ArrayList<String>> result = dao.OracleInputSql(sqlQuery); // DAO 실행 결과
-
-            if (result != null && !result.isEmpty()) {
-                // 컬럼 이름과 데이터 생성
-                List<String> columnNames = new ArrayList<>(result.keySet());
-                List<List<String>> data = new ArrayList<>();
-
-                // 데이터 변환 (행 단위로 정리)
-                int numRows = result.values().iterator().next().size(); // 첫 열의 크기 사용
-                for (int i = 0; i < numRows; i++) {
-                    List<String> row = new ArrayList<>();
-                    for (String key : columnNames) {
-                        row.add(result.get(key).get(i));
-                    }
-                    data.add(row);
-                }
-
-                // 부모 뷰 패널 갱신
-                parent.createViewPanel(columnNames, data);
-            } else {
-                JOptionPane.showMessageDialog(parent, "조회 결과가 없습니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
-            }
+            labelPanel.add(keyLabel);
         }
+
+        JScrollPane scrollPane = new JScrollPane(labelPanel);
+        getViewPanel().add(scrollPane, BorderLayout.CENTER);
+        getViewPanel().revalidate();
+        getViewPanel().repaint();
     }
 
-	private Container getViewPanel() {
+    public JPanel getViewPanel1() {
+        return viewPanel;
+    }
+
+    public void setViewPanel1(JPanel viewPanel) {
         this.viewPanel = viewPanel;
-		return null;
-	}
+    }
+
+//커스텀 버튼 클래
+class customButton extends JLabel {
+ private String name;
+ private MainPanel parent;
+
+ public customButton(String name, MainPanel parent) {
+     this.name = name;
+     this.parent = parent;
+
+     // 버튼 스타일 설정
+     setText(name);
+     setHorizontalAlignment(SwingConstants.CENTER);
+     setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+     setOpaque(true);
+     setBackground(Color.LIGHT_GRAY);
+     setPreferredSize(new Dimension(150, 40));
+
+     addMouseListener(new MouseAdapter() {
+         @Override
+         public void mouseEntered(MouseEvent e) {
+             setBackground(Color.DARK_GRAY);
+             setForeground(Color.WHITE);
+         }
+
+         @Override
+         public void mouseExited(MouseEvent e) {
+             setBackground(Color.LIGHT_GRAY);
+             setForeground(Color.BLACK);
+         }
+
+         @Override
+         public void mouseClicked(MouseEvent e) {
+             handleClick();
+         }
+     });
+ }
+
+ // 클릭 이벤트 처리
+ private void handleClick() {
+     if (name.equals("글쓰기")) {
+         parent.createWritePanel(); // 글쓰기 클릭 시 글쓰기 패널을 생성
+     } else if (name.equals("조회")) {
+         // 조회 버튼 클릭 시
+         Sql sqlManager = new Sql();
+         String sqlQuery = sqlManager.sql().get("조회"); // 조회에 해당하는 SQL 쿼리 가져오기
+         DAO dao = new DAO();
+         Map<String, ArrayList<String>> result = dao.OracleInputSql(sqlQuery); // DAO 실행 결과
+
+         if (result != null && !result.isEmpty()) {
+             // 컬럼 이름과 데이터 생성
+             List<String> columnNames = new ArrayList<>(result.keySet());
+             List<List<String>> data = new ArrayList<>();
+
+             // 데이터 변환 (행 단위로 정리)
+             int numRows = result.values().iterator().next().size(); // 첫 열의 크기 사용
+             for (int i = 0; i < numRows; i++) {
+                 List<String> row = new ArrayList<>();
+                 for (String key : columnNames) {
+                     row.add(result.get(key).get(i));
+                 }
+                 data.add(row);
+             }
+
+             // 조회 결과를 라벨로 표시
+             parent.createViewPanel(columnNames, data);  // 기본 테이블 형식으로 결과를 출력
+             // 조회된 데이터의 키 값에 해당하는 라벨 출력
+             parent.displayLabelsForKeys(columnNames, result);
+         } else {
+             JOptionPane.showMessageDialog(parent, "조회 결과가 없습니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
+         }
+     } else if (name.equals("삭제")) {
+         // 삭제 버튼 클릭 시
+         int confirmation = JOptionPane.showConfirmDialog(parent,
+                 "삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
+
+         if (confirmation == JOptionPane.YES_OPTION) {
+             // 사용자가 "확인"을 누른 경우 삭제 작업을 수행합니다.
+             performDeleteAction();
+         }
+     } else {
+         // 다른 버튼 클릭 시 기존 기능 실행
+         Sql sqlManager = new Sql();
+         String sqlQuery = sqlManager.sql().get(name); // SQL 조회
+         DAO dao = new DAO();
+         Map<String, ArrayList<String>> result = dao.OracleInputSql(sqlQuery); // DAO 실행 결과
+
+         if (result != null && !result.isEmpty()) {
+             // 컬럼 이름과 데이터 생성
+             List<String> columnNames = new ArrayList<>(result.keySet());
+             List<List<String>> data = new ArrayList<>();
+
+             // 데이터 변환 (행 단위로 정리)
+             int numRows = result.values().iterator().next().size(); // 첫 열의 크기 사용
+             for (int i = 0; i < numRows; i++) {
+                 List<String> row = new ArrayList<>();
+                 for (String key : columnNames) {
+                     row.add(result.get(key).get(i));
+                 }
+                 data.add(row);
+             }
+
+             // 부모 뷰 패널 갱신
+             parent.createViewPanel(columnNames, data);
+         } else {
+             JOptionPane.showMessageDialog(parent, "조회 결과가 없습니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
+         }
+     }
+ }
+
+ // 삭제 작업을 수행하는 메서드 (여기서 실제 삭제 처리를 진행)
+ private void performDeleteAction() {
+     // 실제 삭제 로직을 여기서 작성하세요.
+     // 예: DAO를 통해 데이터베이스에서 해당 항목을 삭제하는 작업
+
+     JOptionPane.showMessageDialog(parent, "삭제가 완료되었습니다.", "삭제 완료", JOptionPane.INFORMATION_MESSAGE);
+ 	}
+  }
 }
+
+
 
